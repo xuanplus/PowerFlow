@@ -134,15 +134,15 @@ int main()
 	// 除平衡节点，设电压实部为1.0，虚部为0.0
 	for (int i = 0; i < n; i++)
 	{
-		if (nodes[i].type != 3)
-		{
-			nodes[i].e = 1.0;
-			nodes[i].f = 0.0;
-		}
-		else
+		if (nodes[i].type != 1)
 		{
 			nodes[i].e = nodes[i].U * cosf(nodes[i].a);
 			nodes[i].f = nodes[i].U * sinf(nodes[i].a);
+		}
+		else
+		{
+			nodes[i].e = 1.0;
+			nodes[i].f = 0.0;
 		}
 	}
 
@@ -190,7 +190,7 @@ int main()
 			}
 			else if (nodes[i].type == 2)
 			{
-				U[i] = sqrtf(powf(nodes[i].e, 2) + powf(nodes[i].f, 2));
+				U[i] = powf(nodes[i].e, 2) + powf(nodes[i].f, 2);
 			}
 		}
 
@@ -206,10 +206,10 @@ int main()
 
 			deltaP[i] = nodes[i].P - P[i];
 			deltaQ[i] = nodes[i].Q - Q[i];
-			deltaU[i] = sqrtf(powf(nodes[i].U, 2) - powf(U[i], 2));
+			deltaU[i] = powf(nodes[i].U, 2) - U[i];
 		}
 
-		// 形成雅可比矩阵
+		// 雅可比矩阵子阵
 		vector<vector<float>> H(n, vector<float>(n, 0));
 		vector<vector<float>> N(n, vector<float>(n, 0));
 		vector<vector<float>> J(n, vector<float>(n, 0));
@@ -226,10 +226,12 @@ int main()
 			for (int j = 0; j < n; j++)
 			{
 				if (nodes[i].type == 3 || nodes[j].type == 3) continue;
+
+				H[i][j] = -1.0 * Y[i][j].imag * nodes[i].e + Y[i][j].real * nodes[i].f;
+				N[i][j] = Y[i][j].real * nodes[i].e + Y[i][j].imag * nodes[i].f;
+
 				if (i != j)
 				{
-					H[i][j] = -1.0 * Y[i][j].imag * nodes[i].e + Y[i][j].real * nodes[i].f;
-					N[i][j] = Y[i][j].real * nodes[i].e + Y[i][j].imag * nodes[i].f;
 					J[i][j] = -1 * N[i][j];
 					L[i][j] = H[i][j];
 				}
@@ -249,8 +251,8 @@ int main()
 					const float a = I.real;
 					const float b = I.imag;
 
-					H[i][j] = -1.0 * Y[i][j].imag * nodes[i].e + Y[i][j].real * nodes[i].f + b;
-					N[i][j] = Y[i][j].real * nodes[i].e + Y[i][j].imag * nodes[i].f + a;
+					H[i][j] += b;
+					N[i][j] += a;
 					J[i][j] = N[i][j] * -1 + a * 2;
 					L[i][j] = H[i][j] - b * 2;
 					R[i][j] = 2 * nodes[i].f;
@@ -276,8 +278,10 @@ int main()
 				}
 				int a = sss ? (i - 1) * 2 : i * 2;
 				int b = sss ? (j - 1) * 2 : j * 2;
+
 				JAC[a][b] = H[i][j];
 				JAC[a][b + 1] = N[i][j];
+
 				if (nodes[i].type == 1)
 				{
 					JAC[a + 1][b] = J[i][j];
@@ -381,6 +385,30 @@ int main()
 			}
 		}
 
+		// 输出ΔP、ΔQ、ΔU矩阵
+		outfile << "\n[ ";
+		for (int i = 0; i < n; i++)
+		{
+			if (nodes[i].type == 1)
+			{
+				outfile << "ΔP" << i + 1 << " " << "ΔQ" << i + 1 << " ";
+			}
+			else if (nodes[i].type == 2)
+			{
+				outfile << "ΔP" << i + 1 << " " << "ΔU" << i + 1 << " ";
+			}
+			else
+			{
+				continue;
+			}
+		}
+		outfile << "]:\n";
+		for (int i = 0; i < a; i++)
+		{
+			outfile << right << setw(12) << delta_PQU[i] << " ";
+		}
+		outfile << endl;
+
 		for (int i = 0; i < a; i++)
 		{
 			for (int j = 0; j < a; j++)
@@ -394,7 +422,7 @@ int main()
 		for (int i = 0; i < n; i++)
 		{
 			if (nodes[i].type == 3) continue;
-			outfile << "Δe" << i + 1 << " " << "Δf" << i + 1 << " ";
+			outfile << "Δf" << i + 1 << " " << "Δe" << i + 1 << " ";
 		}
 		outfile << "]:\n";
 		for (int i = 0; i < a; i++)
