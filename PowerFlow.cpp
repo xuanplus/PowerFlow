@@ -476,14 +476,6 @@ int main()
 		outfile << "U=" << complex(nodes[i].e, nodes[i].f) << endl;
 	}
 
-	// 输出各节点注入功率
-	outfile << "\n各节点注入功率：" << endl;
-	for (int i = 0; i < n; i++)
-	{
-		outfile << "节点" << i + 1 << "：";
-		outfile << "S=" << complex(nodes[i].P, nodes[i].Q) << endl;
-	}
-
 	// ----计算平衡节点功率和线路功率----
 
 	// 计算平衡节点功率
@@ -500,6 +492,14 @@ int main()
 		}
 
 		S_b = S_b * complex(nodes[i].e, nodes[i].f);
+	}
+
+	// 输出各节点注入功率
+	outfile << "\n各节点注入功率：" << endl;
+	for (int i = 0; i < n; i++)
+	{
+		outfile << "节点" << i + 1 << "：";
+		outfile << "S=" << (nodes[i].type == 3 ? S_b : complex(nodes[i].P, nodes[i].Q)) << endl;
 	}
 
 	// 计算线路功率
